@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { requestJSON } from "@/lib/nlp/client";
 import { toast } from "sonner";
 import {
   GraduationCap,
@@ -13,7 +14,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { generateChunkQuestions, type ChunkQuestion } from "@/lib/chunk-quiz";
+import { generateChunkQuestions } from "@/lib/chunk-quiz";
 import type { QuizQuestion, Chunk } from "@/lib/supabase/types";
 
 type TestMode = "grammar" | "chunks" | "mixed";
@@ -21,6 +22,7 @@ type QuestionItem = { prompt: string; options: string[]; answer_index: number };
 
 export default function TestPage() {
   const supabase = createClient();
+  const attempt = useRef<string | null>(null);
   const [mode, setMode] = useState<TestMode | null>(null);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -31,6 +33,7 @@ export default function TestPage() {
   const [loading, setLoading] = useState(false);
 
   const startTest = useCallback(async (selectedMode: TestMode) => {
+    attempt.current = crypto.randomUUID();
     setLoading(true);
     setMode(selectedMode);
     setCurrentIndex(0);
@@ -107,31 +110,13 @@ export default function TestPage() {
   }
 
   async function finishTest() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const total = questions.length;
-    const pct = Math.round((score / total) * 100);
-    const xpEarned = Math.round((pct / 100) * 50);
-    const today = new Date().toISOString().split("T")[0];
-
-    await supabase.from("test_results").insert({
-      user_id: user.id,
-      mode: mode!,
-      score: score,
-      total,
-      pct,
-      taken_on: today,
-    });
-
-    await supabase.from("profiles").select("xp").eq("id", user.id).single().then(({ data }) => {
-      if (data) {
-        supabase.from("profiles").update({ xp: (data.xp || 0) + xpEarned }).eq("id", user.id);
-      }
-    });
-
-    setFinished(true);
-    toast.success(`Test complete! +${xpEarned} XP`);
+    if (!attempt.current || !mode) return;
+    setLoading(true);
+    try {
+      const result = await requestJSON<{xp_awarded:number}>("/api/learning/test", {method:"POST",body:JSON.stringify({attempt_id:attempt.current,mode,score,total:questions.length})});
+      setFinished(true); toast.success(`Test saved. +${result.xp_awarded} XP`);
+    } catch(e) {toast.error(e instanceof Error ? e.message : "Quiz save failed. Retry finishing this question.");}
+    finally {setLoading(false);}
   }
 
   const currentQ = questions[currentIndex];

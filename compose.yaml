@@ -1,0 +1,24 @@
+services:
+  nlp:
+    build:
+      context: ./nlp-service
+      args:
+        WITH_EMBEDDINGS: "true"
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      NLP_SERVICE_API_KEY: ${NLP_SERVICE_API_KEY:?Set NLP_SERVICE_API_KEY in .env.local}
+      NLP_ENABLE_EMBEDDINGS: "true"
+      EMBEDDING_REVISION: c9745ed1d9f207416be6d2e6f8de32d1f16199bf
+      LANGUAGETOOL_URL: ${LANGUAGETOOL_URL:-}
+      OMP_NUM_THREADS: "1"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 2
+    restart: unless-stopped

@@ -26,12 +26,7 @@ interface ProgressChartProps {
 
 type ChartType = "line" | "bar";
 
-export default function ProgressChart({ data }: ProgressChartProps) {
-  const [chartType, setChartType] = useState<ChartType>("bar");
-  const [showXP, setShowXP] = useState(true);
-  const [showActivities, setShowActivities] = useState(true);
-
-  const CustomTooltip = ({
+const CustomTooltip = ({
     active,
     payload,
     label,
@@ -58,6 +53,13 @@ export default function ProgressChart({ data }: ProgressChartProps) {
     }
     return null;
   };
+
+
+export default function ProgressChart({ data }: ProgressChartProps) {
+  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [showXP, setShowXP] = useState(true);
+  const [showActivities, setShowActivities] = useState(true);
+
 
   return (
     <div className="rounded-2xl bg-background-card border border-border p-6">

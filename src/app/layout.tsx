@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/outfit";
 import { Toaster } from "sonner";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-});
 
 export const metadata: Metadata = {
   title: "FluentFive — Master English Fluency in 5 Daily Activities",
@@ -34,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${outfit.variable} antialiased min-h-screen`}
+        className={"antialiased min-h-screen"}
       >
         {children}
         <Toaster

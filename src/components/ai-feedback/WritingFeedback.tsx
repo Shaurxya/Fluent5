@@ -21,9 +21,9 @@ export function WritingFeedback({ data, originalText }: WritingFeedbackProps) {
       </div>
 
       {/* Register Check */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
+      <div className="flex items-center gap-4 bg-background-card p-4 rounded-xl border border-border shadow-sm">
         <div className="flex-1">
-          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Register Match</div>
+          <div className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-1">Register Match</div>
           <div className="flex items-center gap-2 text-sm">
             Target: <span className="font-semibold">{data.registerCheck.target}</span>
             <span className="text-neutral-300">→</span>
@@ -33,7 +33,7 @@ export function WritingFeedback({ data, originalText }: WritingFeedbackProps) {
           </div>
         </div>
         {data.registerCheck.mismatches.length > 0 && (
-          <div className="flex-1 bg-amber-50 p-2 rounded-lg border border-amber-100 text-sm text-amber-800">
+          <div className="flex-1 bg-amber-500/10 p-2 rounded-lg border border-amber-100 text-sm text-amber-200">
             <strong>Mismatches:</strong> {data.registerCheck.mismatches.join(', ')}
           </div>
         )}
@@ -41,25 +41,25 @@ export function WritingFeedback({ data, originalText }: WritingFeedbackProps) {
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Original with Annotations */}
-        <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-          <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-4">Your Text</h3>
-          <div className="text-neutral-800 text-sm leading-relaxed whitespace-pre-wrap font-serif">
+        <div className="bg-background-card p-6 rounded-2xl border border-border shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wider mb-4">Your Text</h3>
+          <div className="text-foreground text-sm leading-relaxed whitespace-pre-wrap font-serif">
             {originalText}
           </div>
           
           {data.annotations.length > 0 && (
-            <div className="mt-6 space-y-3 pt-6 border-t border-neutral-100">
-              <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Feedback</h4>
+            <div className="mt-6 space-y-3 pt-6 border-t border-border">
+              <h4 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Feedback</h4>
               {data.annotations.map((ann, idx) => (
-                <div key={idx} className="bg-neutral-50 p-3 rounded-lg border border-neutral-200 text-sm">
+                <div key={idx} className="bg-background-secondary p-3 rounded-lg border border-border text-sm">
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-neutral-800">"{ann.span}"</span>
-                    <span className="text-[10px] uppercase bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-medium">
+                    <span className="font-semibold text-foreground">&ldquo;{ann.span}&rdquo;</span>
+                    <span className="text-[10px] uppercase bg-neutral-200 text-foreground-muted px-1.5 py-0.5 rounded font-medium">
                       {ann.type}
                     </span>
                   </div>
-                  <div className="text-neutral-600 mb-2">{ann.comment}</div>
-                  <div className="bg-white px-2 py-1.5 rounded border border-neutral-200 text-emerald-700">
+                  <div className="text-foreground-muted mb-2">{ann.comment}</div>
+                  <div className="bg-background-card px-2 py-1.5 rounded border border-border text-emerald-300">
                     <span className="font-medium mr-1">Fix:</span>{ann.suggestion}
                   </div>
                 </div>
@@ -70,26 +70,26 @@ export function WritingFeedback({ data, originalText }: WritingFeedbackProps) {
 
         {/* Rewrite & Changes */}
         <div className="space-y-6">
-          <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 shadow-sm">
-            <h3 className="text-sm font-semibold text-indigo-800 uppercase tracking-wider mb-4">Polished Version</h3>
-            <div className="text-indigo-950 text-sm leading-relaxed whitespace-pre-wrap font-serif">
+          <div className="bg-accent/10 p-6 rounded-2xl border border-accent/20 shadow-sm">
+            <h3 className="text-sm font-semibold text-accent uppercase tracking-wider mb-4">Polished Version</h3>
+            <div className="text-foreground text-sm leading-relaxed whitespace-pre-wrap font-serif">
               {data.rewrite}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-            <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">What Changed & Why</h3>
+          <div className="bg-background-card p-6 rounded-2xl border border-border shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wider mb-3">What Changed & Why</h3>
             <ul className="space-y-2 text-sm text-neutral-700 list-disc list-inside">
               {data.whatChanged.map((change, i) => <li key={i}>{change}</li>)}
             </ul>
           </div>
 
           {data.levelUp && (
-            <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 shadow-sm flex gap-3 items-start">
+            <div className="bg-emerald-500/10 p-6 rounded-2xl border border-emerald-100 shadow-sm flex gap-3 items-start">
               <span className="text-xl">🚀</span>
               <div>
-                <h3 className="text-sm font-semibold text-emerald-800 uppercase tracking-wider mb-1">Level Up</h3>
-                <p className="text-sm text-emerald-900">{data.levelUp}</p>
+                <h3 className="text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-1">Level Up</h3>
+                <p className="text-sm text-emerald-300">{data.levelUp}</p>
               </div>
             </div>
           )}
@@ -107,9 +107,9 @@ function ScoreCard({ title, score }: { title: string, score: number }) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-neutral-200 text-center shadow-sm">
+    <div className="bg-background-card p-4 rounded-xl border border-border text-center shadow-sm">
       <div className={`text-3xl font-bold mb-1 ${getColor(score)}`}>{score}</div>
-      <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">{title}</div>
+      <div className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">{title}</div>
     </div>
   );
 }

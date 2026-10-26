@@ -1,0 +1,25 @@
+{
+  "license": "CC0-1.0; original locally authored development examples, not a representative benchmark",
+  "grammar": [
+    {"text":"I goes to college yesterday and meet my friends.","corrected":"I went to college yesterday and met my friends.","errors":[[2,6],[32,36]]},
+    {"text":"She go home.","corrected":"She goes home.","errors":[[4,6]]},
+    {"text":"I ate a apple.","corrected":"I ate an apple.","errors":[[6,7]]},
+    {"text":"I am interested on music.","corrected":"I am interested in music.","errors":[[16,18]]},
+    {"text":"I went home yesterday.","corrected":"I went home yesterday.","errors":[]},
+    {"text":"An hour is enough.","corrected":"An hour is enough.","errors":[]},
+    {"text":"She goes home every day.","corrected":"She goes home every day.","errors":[]},
+    {"text":"I wanted to go yesterday.","corrected":"I wanted to go yesterday.","errors":[]}
+  ],
+  "semantic": [
+    {"prompt":"What are the benefits of exercising regularly?","text":"Exercise helps people stay healthy, improve their mood, and become stronger.","related":true},
+    {"prompt":"What are the benefits of exercising regularly?","text":"My bicycle has a flat tire and needs a new wheel.","related":false},
+    {"prompt":"Describe your favorite meal.","text":"I love homemade pasta with tomato sauce and fresh basil.","related":true},
+    {"prompt":"Describe your favorite meal.","text":"The planet Jupiter is a gas giant with many moons.","related":false}
+  ],
+  "alignment": [
+    {"reference":"I like tea","text":"I love tea","wer":0.3333},
+    {"reference":"We walk home","text":"We walk home","wer":0},
+    {"reference":"I like tea","text":"I tea","wer":0.3333},
+    {"reference":"I like tea","text":"I really like tea","wer":0.3333}
+  ]
+}

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { useLearningSummary, PersonalizedLearningPlan, SummaryError } from "@/components/nlp/LearningSummary";
 import {
   Mic,
   MessageSquare,
@@ -10,9 +12,6 @@ import {
   Sparkles,
   Flame,
   Search,
-  SlidersHorizontal,
-  ArrowUpDown,
-  Bookmark,
   ArrowRight,
   Check
 } from "lucide-react";
@@ -83,9 +82,7 @@ function ActivityCard({ activity }: { activity: ActivityProps }) {
             {activity.type}
           </span>
         </div>
-        <button className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-raised transition-colors">
-          <Bookmark className="w-4 h-4" />
-        </button>
+
       </div>
 
       {/* Title & Body */}
@@ -123,6 +120,13 @@ function ActivityCard({ activity }: { activity: ActivityProps }) {
 }
 
 export default function TodayPage() {
+  const {data,error,reload} = useLearningSummary();
+  const [search,setSearch] = useState("");
+  const [filter,setFilter] = useState("all");
+  const [sort,setSort] = useState("daily");
+  const visible = activities.filter((a) => (filter === "all" || a.type === filter) && `${a.title} ${a.description}`.toLowerCase().includes(search.toLowerCase()));
+  if (sort === "name") visible.sort((a,b) => a.title.localeCompare(b.title));
+  const activityKeys: Record<string,string> = { "Read + Chunks": "read", "Speak & Think": "speak", "Shadowing": "shadow", "Write & Rewrite": "write", "Spaced Review": "review" };
   return (
     <div className="space-y-8 animate-fade-in-up">
       {/* Header */}
@@ -140,6 +144,7 @@ export default function TodayPage() {
         </div>
       </div>
 
+      {error && <SummaryError error={error} retry={reload} />}
       {/* Banner */}
       <div className="bg-surface border border-border rounded-xl p-4 sm:p-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
@@ -148,10 +153,10 @@ export default function TodayPage() {
           </div>
           <div>
             <h2 className="text-base font-bold text-text-primary">
-              Day 7 streak, 3 of 5 done
+              {data ? `${data.profile.streak}-day streak, ${data.today_activities.length} of 5 done` : "Loading your practice history…"}
             </h2>
             <p className="text-sm text-text-muted mt-0.5">
-              Keep the loop going.
+              {data ? `${data.weekly_active_days} active days this week · ${data.due_chunks} phrases due for review` : "Your real progress appears after history loads."}
             </p>
           </div>
         </div>
@@ -167,6 +172,7 @@ export default function TodayPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
             type="text"
+            aria-label="Search activities" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Search activities..."
             className="w-full bg-surface border border-border rounded-lg py-2.5 pl-10 pr-4 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-ring transition-colors"
           />
@@ -174,23 +180,18 @@ export default function TodayPage() {
         
         {/* Filters & Sort */}
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-surface border border-border rounded-lg px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-colors">
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-          </button>
-          <button className="flex items-center gap-2 bg-surface border border-border rounded-lg px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-colors">
-            Newest
-            <ArrowUpDown className="w-4 h-4 ml-1" />
-          </button>
+          <select aria-label="Filter activities" value={filter} onChange={(e) => setFilter(e.target.value)} className="nlp-input w-auto"><option value="all">All activities</option><option value="INPUT">Input</option><option value="OUTPUT">Output</option><option value="REVIEW">Review</option></select>
+          <select aria-label="Sort activities" value={sort} onChange={(e) => setSort(e.target.value)} className="nlp-input w-auto"><option value="daily">Daily order</option><option value="name">Name</option></select>
         </div>
       </div>
 
       {/* Card Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {activities.map((activity, idx) => (
-          <ActivityCard key={idx} activity={activity} />
+        {visible.map((activity, idx) => (
+          <ActivityCard key={idx} activity={{...activity, isDone: data?.today_activities.includes(activityKeys[activity.title])}} />
         ))}
       </div>
+      {data && <PersonalizedLearningPlan data={data} />}
     </div>
   );
 }

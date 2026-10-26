@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { requestJSON } from "@/lib/nlp/client";
 import { toast } from "sonner";
-import { sm2, type Grade, GRADE_MAP } from "@/lib/sm2";
+import { type Grade, GRADE_MAP } from "@/lib/sm2";
 import {
   RotateCcw,
   CheckCircle2,
@@ -21,86 +22,43 @@ export default function ReviewPage() {
   const [flipped, setFlipped] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [loadError,setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [earned, setEarned] = useState(0);
+  const reviewAttempt = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDue() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {setLoadError("Sign in again to load your flashcards.");setLoading(false);return;}
 
       const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("chunks")
         .select("*")
         .eq("user_id", user.id)
         .lte("due_date", today)
         .order("due_date", { ascending: true });
 
+      if (error) setLoadError("Could not load due cards. Refresh to retry.");
       if (data) setCards(data as Chunk[]);
       setLoading(false);
     }
     loadDue();
-  }, []);
+  }, [supabase]);
 
   async function handleGrade(grade: Grade) {
     const card = cards[currentIndex];
-    if (!card) return;
-
-    const quality = GRADE_MAP[grade];
-    const result = sm2({
-      quality,
-      ef: Number(card.ef),
-      interval: card.interval,
-      reps: card.reps,
-    });
-
-    // Update card in Supabase
-    await supabase
-      .from("chunks")
-      .update({
-        ef: result.ef,
-        interval: result.interval,
-        reps: result.reps,
-        due_date: result.dueDate.toISOString().split("T")[0],
-      })
-      .eq("id", card.id);
-
-    setReviewed((prev) => prev + 1);
-    setFlipped(false);
-
-    if (currentIndex + 1 >= cards.length) {
-      // All done
-      await completeSession();
-    } else {
-      setCurrentIndex((prev) => prev + 1);
-    }
-  }
-
-  async function completeSession() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    const xpEarned = reviewed * 10;
-
-    await supabase.from("sessions").upsert(
-      {
-        user_id: user.id,
-        activity_key: "review",
-        done_on: today,
-        payload: { cards_reviewed: reviewed + 1, xp_earned: xpEarned + 10 },
-      },
-      { onConflict: "user_id,activity_key,done_on" }
-    );
-
-    await supabase.from("profiles").select("xp").eq("id", user.id).single().then(({ data }) => {
-      if (data) {
-        supabase.from("profiles").update({ xp: (data.xp || 0) + xpEarned + 10, last_active: today }).eq("id", user.id);
-      }
-    });
-
-    setCompleted(true);
-    toast.success(`Review complete! +${xpEarned + 10} XP ✨`);
+    if (!card || saving) return;
+    setSaving(true); reviewAttempt.current ||= crypto.randomUUID();
+    try {
+      const result = await requestJSON<{ xp_awarded: number }>("/api/learning/review", { method: "POST", body: JSON.stringify({ attempt_id: reviewAttempt.current, chunk_id: card.id, quality: GRADE_MAP[grade] }) });
+      setEarned((n) => n + result.xp_awarded); setReviewed((n) => n+1); setFlipped(false); reviewAttempt.current = null;
+      if (currentIndex+1 >= cards.length) { setCompleted(true); toast.success("Review saved."); }
+      else setCurrentIndex((i) => i+1);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Review save failed. Try again."); }
+    finally { setSaving(false); }
   }
 
   const currentCard = cards[currentIndex];
@@ -112,6 +70,8 @@ export default function ReviewPage() {
       </div>
     );
   }
+
+  if (loadError) return <div role="alert" className="nlp-panel space-y-4"><p>{loadError}</p><button className="nlp-button" onClick={() => window.location.reload()}>Retry loading flashcards</button></div>;
 
   return (
     <div className="max-w-xl mx-auto space-y-8">
@@ -150,7 +110,7 @@ export default function ReviewPage() {
           </h3>
           <p className="text-foreground-muted">
             You reviewed <span className="font-medium text-foreground">{reviewed}</span> cards and earned{" "}
-            <span className="font-medium text-accent">{reviewed * 10} XP</span>.
+            <span className="font-medium text-accent">{earned} XP</span>.
           </p>
         </div>
       ) : (
@@ -170,6 +130,7 @@ export default function ReviewPage() {
           {/* Flashcard */}
           <div
             className="flip-card h-64 cursor-pointer"
+            role="button" tabIndex={0} aria-label="Flip flashcard" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setFlipped(!flipped); } }}
             onClick={() => setFlipped(!flipped)}
           >
             <div className={cn("flip-card-inner", flipped && "flipped")}>
@@ -210,24 +171,28 @@ export default function ReviewPage() {
           {flipped && (
             <div className="grid grid-cols-4 gap-3 animate-fade-in">
               <button
+                disabled={saving}
                 onClick={() => handleGrade("again")}
                 className="py-3 rounded-xl bg-error/10 text-error font-medium text-sm hover:bg-error/20 transition-all"
               >
                 Again
               </button>
               <button
+                disabled={saving}
                 onClick={() => handleGrade("hard")}
                 className="py-3 rounded-xl bg-warning/10 text-warning font-medium text-sm hover:bg-warning/20 transition-all"
               >
                 Hard
               </button>
               <button
+                disabled={saving}
                 onClick={() => handleGrade("good")}
                 className="py-3 rounded-xl bg-info/10 text-info font-medium text-sm hover:bg-info/20 transition-all"
               >
                 Good
               </button>
               <button
+                disabled={saving}
                 onClick={() => handleGrade("easy")}
                 className="py-3 rounded-xl bg-success/10 text-success font-medium text-sm hover:bg-success/20 transition-all"
               >

@@ -1,0 +1,394 @@
+{
+  "version": "nlp-v1",
+  "request_id": "af60c2d5-ee9e-44f7-90ed-43d15e9cad32",
+  "mode": "read",
+  "text": "I goes to college yesterday and meet my friends. I think this movie is good. The story is good and the acting is good.",
+  "offset_encoding": "unicode_codepoints",
+  "model_info": {
+    "spacy_version": "3.8.7",
+    "spacy_pipeline_version": "3.8.0",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_revision": "c9745ed1d9f207416be6d2e6f8de32d1f16199bf",
+    "embeddings_used": false
+  },
+  "preprocessing": {
+    "tokens": [
+      {
+        "text": "I",
+        "start": 0,
+        "end": 1,
+        "lemma": "I",
+        "pos": "PRON"
+      },
+      {
+        "text": "goes",
+        "start": 2,
+        "end": 6,
+        "lemma": "go",
+        "pos": "VERB"
+      },
+      {
+        "text": "to",
+        "start": 7,
+        "end": 9,
+        "lemma": "to",
+        "pos": "ADP"
+      },
+      {
+        "text": "college",
+        "start": 10,
+        "end": 17,
+        "lemma": "college",
+        "pos": "NOUN"
+      },
+      {
+        "text": "yesterday",
+        "start": 18,
+        "end": 27,
+        "lemma": "yesterday",
+        "pos": "NOUN"
+      },
+      {
+        "text": "and",
+        "start": 28,
+        "end": 31,
+        "lemma": "and",
+        "pos": "CCONJ"
+      },
+      {
+        "text": "meet",
+        "start": 32,
+        "end": 36,
+        "lemma": "meet",
+        "pos": "VERB"
+      },
+      {
+        "text": "my",
+        "start": 37,
+        "end": 39,
+        "lemma": "my",
+        "pos": "PRON"
+      },
+      {
+        "text": "friends",
+        "start": 40,
+        "end": 47,
+        "lemma": "friend",
+        "pos": "NOUN"
+      },
+      {
+        "text": ".",
+        "start": 47,
+        "end": 48,
+        "lemma": ".",
+        "pos": "PUNCT"
+      },
+      {
+        "text": "I",
+        "start": 49,
+        "end": 50,
+        "lemma": "I",
+        "pos": "PRON"
+      },
+      {
+        "text": "think",
+        "start": 51,
+        "end": 56,
+        "lemma": "think",
+        "pos": "VERB"
+      },
+      {
+        "text": "this",
+        "start": 57,
+        "end": 61,
+        "lemma": "this",
+        "pos": "DET"
+      },
+      {
+        "text": "movie",
+        "start": 62,
+        "end": 67,
+        "lemma": "movie",
+        "pos": "NOUN"
+      },
+      {
+        "text": "is",
+        "start": 68,
+        "end": 70,
+        "lemma": "be",
+        "pos": "AUX"
+      },
+      {
+        "text": "good",
+        "start": 71,
+        "end": 75,
+        "lemma": "good",
+        "pos": "ADJ"
+      },
+      {
+        "text": ".",
+        "start": 75,
+        "end": 76,
+        "lemma": ".",
+        "pos": "PUNCT"
+      },
+      {
+        "text": "The",
+        "start": 77,
+        "end": 80,
+        "lemma": "the",
+        "pos": "DET"
+      },
+      {
+        "text": "story",
+        "start": 81,
+        "end": 86,
+        "lemma": "story",
+        "pos": "NOUN"
+      },
+      {
+        "text": "is",
+        "start": 87,
+        "end": 89,
+        "lemma": "be",
+        "pos": "AUX"
+      },
+      {
+        "text": "good",
+        "start": 90,
+        "end": 94,
+        "lemma": "good",
+        "pos": "ADJ"
+      },
+      {
+        "text": "and",
+        "start": 95,
+        "end": 98,
+        "lemma": "and",
+        "pos": "CCONJ"
+      },
+      {
+        "text": "the",
+        "start": 99,
+        "end": 102,
+        "lemma": "the",
+        "pos": "DET"
+      },
+      {
+        "text": "acting",
+        "start": 103,
+        "end": 109,
+        "lemma": "acting",
+        "pos": "NOUN"
+      },
+      {
+        "text": "is",
+        "start": 110,
+        "end": 112,
+        "lemma": "be",
+        "pos": "AUX"
+      },
+      {
+        "text": "good",
+        "start": 113,
+        "end": 117,
+        "lemma": "good",
+        "pos": "ADJ"
+      },
+      {
+        "text": ".",
+        "start": 117,
+        "end": 118,
+        "lemma": ".",
+        "pos": "PUNCT"
+      }
+    ],
+    "sentences": [
+      {
+        "text": "I goes to college yesterday and meet my friends.",
+        "start": 0,
+        "end": 48
+      },
+      {
+        "text": "I think this movie is good.",
+        "start": 49,
+        "end": 76
+      },
+      {
+        "text": "The story is good and the acting is good.",
+        "start": 77,
+        "end": 118
+      }
+    ],
+    "entities": [
+      {
+        "text": "yesterday",
+        "start": 18,
+        "end": 27,
+        "label": "DATE"
+      }
+    ],
+    "model": "en_core_web_sm",
+    "trained_pipeline": true
+  },
+  "grammar": {
+    "status": "partial",
+    "corrected_text": "I went to college yesterday and met my friends. I think this movie is good. The story is good and the acting is good.",
+    "errors": [
+      {
+        "id": "local-2-6",
+        "start": 2,
+        "end": 6,
+        "original": "goes",
+        "category": "tense",
+        "replacements": [
+          "went"
+        ],
+        "explanation": "The explicit past-time expression calls for the simple past in this clause.",
+        "source": "learner-rules-v1"
+      },
+      {
+        "id": "local-32-36",
+        "start": 32,
+        "end": 36,
+        "original": "meet",
+        "category": "tense",
+        "replacements": [
+          "met"
+        ],
+        "explanation": "The explicit past-time expression calls for the simple past in this clause.",
+        "source": "learner-rules-v1"
+      }
+    ],
+    "recommendations": [
+      "The explicit past-time expression calls for the simple past in this clause."
+    ],
+    "note": "Detected issues are suggestions; absence of flags does not establish grammatical correctness. LanguageTool is unavailable or unconfigured; conservative local rules only.",
+    "detector_version": "learner-rules-v1"
+  },
+  "vocabulary": {
+    "word_count": 24,
+    "unique_lemmas": 17,
+    "content_word_count": 12,
+    "type_token_ratio": 0.7083,
+    "mattr": null,
+    "repetitions": [
+      {
+        "word": "good",
+        "count": 3
+      }
+    ],
+    "keywords": [
+      "good",
+      "go",
+      "college",
+      "yesterday",
+      "meet",
+      "friend",
+      "think",
+      "movie",
+      "story",
+      "acting"
+    ],
+    "chunks": [
+      {
+        "text": "my friends",
+        "start": 37,
+        "end": 47,
+        "source": "syntactic_phrase"
+      },
+      {
+        "text": "this movie",
+        "start": 57,
+        "end": 67,
+        "source": "syntactic_phrase"
+      },
+      {
+        "text": "The story",
+        "start": 77,
+        "end": 86,
+        "source": "syntactic_phrase"
+      },
+      {
+        "text": "the acting",
+        "start": 99,
+        "end": 109,
+        "source": "syntactic_phrase"
+      },
+      {
+        "text": "goes to",
+        "start": 2,
+        "end": 9,
+        "source": "syntactic_phrase"
+      }
+    ],
+    "suggestions": [
+      {
+        "original": "movie is good",
+        "suggestion": "the movie is enjoyable",
+        "reason": "An optional, more specific description in this context. 'Good' is valid English; choose only if this preserves your opinion."
+      },
+      {
+        "original": "story is good",
+        "suggestion": "the story is engaging",
+        "reason": "An optional, more specific description in this context. 'Good' is valid English; choose only if this preserves your opinion."
+      },
+      {
+        "original": "acting is good",
+        "suggestion": "the acting is impressive",
+        "reason": "An optional, more specific description in this context. 'Good' is valid English; choose only if this preserves your opinion."
+      }
+    ],
+    "mean_word_length": 3.83,
+    "long_word_fraction": 0.0417,
+    "note": "TTR is highly sensitive to response length. MATTR uses a 50-word window and is unavailable for shorter responses. Compare similar tasks and lengths; longer words are not inherently better."
+  },
+  "semantics": {
+    "status": "not_requested",
+    "method": "lexical coverage only",
+    "similarity": null,
+    "relevance": "not_assessed",
+    "keyword_coverage": null,
+    "coherence": null,
+    "matches": [],
+    "duplicate_sentences": [],
+    "note": "Similarity is evidence of topic relationship, not correctness. Thresholds are provisional. Coherence is adjacent-sentence similarity, not a logical-validity score. Keyword overlap alone cannot judge relevance. Embeddings unavailable; semantic relevance is not scored."
+  },
+  "fluency": {
+    "duration_seconds": null,
+    "words_per_minute": null,
+    "filler_count": 0,
+    "fillers": [],
+    "repetitions": [],
+    "self_correction_markers": 0,
+    "complete_sentence_fraction": 1.0,
+    "grammar_errors_per_100_words": 8.33,
+    "pause_seconds": null,
+    "pronunciation_score": null,
+    "score": null,
+    "note": "WPM uses recognized words divided by elapsed session time, including silence; it is not articulation rate. 'Like', 'actually' and similar markers may be meaningful rather than fillers. Self-corrections and completeness are heuristics. No acoustic pronunciation or pause measurements. Grammar component depends on detector coverage; scores across detector configurations are not comparable. Scores require at least 10 words."
+  },
+  "shadowing": null,
+  "reading": {
+    "questions": [
+      {
+        "id": "main-idea",
+        "question": "What is this passage mainly about? Answer in your own words.",
+        "expected_answer": "I goes to college yesterday and meet my friends."
+      },
+      {
+        "id": "detail",
+        "question": "Explain one supporting detail from the passage in your own words.",
+        "expected_answer": "I think this movie is good. The story is good and the acting is good."
+      }
+    ],
+    "reading_ease": 96.5,
+    "difficulty": "more accessible",
+    "note": "Flesch-style reading ease uses heuristic syllables. It is a text difficulty estimate, not learner proficiency. Extractive answer anchors are not exhaustive; semantic similarity cannot prove correctness."
+  },
+  "writing": null,
+  "warnings": [
+    "Grammar uses limited local rules; configure LanguageTool for wider coverage."
+  ],
+  "latency_ms": 4.08
+}

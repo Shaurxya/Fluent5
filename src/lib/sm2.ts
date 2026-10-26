@@ -16,7 +16,8 @@ export interface SM2Result {
 }
 
 export function sm2(input: SM2Input): SM2Result {
-  let { quality, ef, interval, reps } = input;
+  const { quality } = input;
+  let { ef, interval, reps } = input;
 
   if (quality < 3) {
     // Failed — reset

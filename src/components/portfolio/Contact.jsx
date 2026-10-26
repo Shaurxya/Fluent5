@@ -62,7 +62,7 @@ const Contact = () => {
                         Want to test my AI engineering skills?
                     </h3>
                     <p className="text-[var(--text-secondary)] text-base sm:text-lg mb-8 max-w-2xl mx-auto">
-                        Try <strong className="text-[var(--accent-teal)]">FluentFive</strong> live right now. It's an interactive speaking trainer powered by Next.js, Web Speech API, and OpenRouter AI.
+                        Try <strong className="text-[var(--accent-teal)]">FluentFive</strong> live right now. It&apos;s an interactive speaking trainer powered by Next.js, Web Speech API, and OpenRouter AI.
                     </p>
                     <a
                         href="/fluentfive"
@@ -75,11 +75,11 @@ const Contact = () => {
                 <div className="contact-reveal section-label" style={{ opacity: 0 }}>Get in Touch</div>
 
                 <h2 className="contact-reveal text-3xl sm:text-4xl md:text-6xl font-bold gradient-text mb-4 max-w-2xl" style={{ opacity: 0 }}>
-                    Let's build something great together
+                    Let&apos;s build something great together
                 </h2>
 
                 <p className="contact-reveal text-[var(--text-secondary)] text-base sm:text-lg mb-8 sm:mb-12 max-w-md px-2" style={{ opacity: 0 }}>
-                    I'm always open to discussing new projects, creative ideas, or opportunities.
+                    I&apos;m always open to discussing new projects, creative ideas, or opportunities.
                 </p>
 
                 {/* Social Links */}

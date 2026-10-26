@@ -1,5 +1,4 @@
 // Streak calculation logic
-import { differenceInCalendarDays, parseISO } from "date-fns";
 
 export interface StreakUpdate {
   streak: number;
@@ -24,8 +23,8 @@ export function calculateStreak(
     };
   }
 
-  const lastDate = parseISO(lastActive);
-  const daysDiff = differenceInCalendarDays(today, lastDate);
+  // Match the database's UTC calendar, independent of the learner's device timezone.
+  const daysDiff = Math.round((Date.parse(todayStr) - Date.parse(lastActive)) / 86400000);
 
   if (daysDiff === 0) {
     // Already active today — no change

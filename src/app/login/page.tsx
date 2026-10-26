@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Sparkles, Mail, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -154,4 +154,9 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+export default function LoginPage() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return <main className="min-h-screen flex items-center justify-center p-6"><div className="nlp-panel max-w-xl space-y-4"><h1 className="text-2xl font-bold">Configure FluentFive</h1><p>Copy .env.example to .env.local and add your Supabase URL and public key, then restart the app. Apply the three database migrations and seed content before signing in.</p><p className="text-sm text-foreground-muted">The public landing page is available. Learning accounts require your own Supabase project.</p><a className="text-accent" href="/fluentfive">Back to FluentFive</a></div></main>;
+  return <LoginForm />;
 }

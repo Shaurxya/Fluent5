@@ -15,7 +15,7 @@ export const PacingEngineSchema = z.object({
     z.object({
       word: z.string(),
       shouldStress: z.boolean(),
-      didStress: z.boolean(),
+      didStress: z.null().describe("Cannot measure spoken stress from a transcript."),
     })
   ),
   rushedAt: z.array(
@@ -23,7 +23,7 @@ export const PacingEngineSchema = z.object({
       span: z.string(),
       note: z.string(),
     })
-  ),
+  ).max(0).describe("No acoustic timing is available; return an empty array."),
   tip: z.string(),
 });
 
@@ -53,13 +53,13 @@ export const ShadowingSchema = z.object({
   wordComparison: z.array(
     z.object({
       word: z.string(),
-      status: z.enum(['correct', 'mispronounced', 'missing', 'extra', 'substituted']),
+      status: z.enum(['correct', 'missing', 'extra', 'substituted']),
       heard: z.string().nullable(),
       note: z.string().nullable(),
     })
   ),
   pacing: PacingEngineSchema,
-  intonation: z.string(),
+  intonation: z.null().describe("Acoustic intonation cannot be assessed from text."),
   topFixes: z.array(z.string()).max(3),
   encouragement: z.string(),
 });
@@ -68,11 +68,11 @@ export const ShadowingSchema = z.object({
 export const SpeakingSchema = z.object({
   fluencyScore: z.number().min(0).max(100),
   metrics: z.object({
-    wordsPerMinute: z.number(),
+    wordsPerMinute: z.null().describe("Use the deterministic NLP engine for pace when duration is available."),
     fillerCount: z.number(),
     fillerWords: z.array(z.object({ word: z.string(), count: z.number() })),
     falseStarts: z.number(),
-    longUnnaturalPauses: z.number(),
+    longUnnaturalPauses: z.null(),
     vocabularyRange: z.enum(['low', 'medium', 'high']),
   }),
   grammarIssues: z.array(
@@ -99,7 +99,7 @@ export const SpeakingSchema = z.object({
   ),
   pacing: z.object({
     tip: z.string(),
-    rushedAt: z.array(z.string()),
+    rushedAt: z.array(z.string()).max(0),
   }),
   strengths: z.array(z.string()).min(1).max(2),
   nextFocus: z.string(),

@@ -1,116 +1,105 @@
-# FluentFive — Master English Fluency in 5 Daily Activities
+# FluentFive — daily English practice with a private NLP engine
 
-A production-ready English-fluency trainer built with Next.js, TypeScript, Tailwind CSS, and Supabase.
+FluentFive combines reading, speaking, shadowing, writing and spaced repetition in the existing Next.js application. Its central Read → Think → Speak cycle now connects text analysis, feedback, selected-phrase saving and private learning history. Scores are internal practice signals, not certified English proficiency assessments.
 
-## 🎯 What is FluentFive?
+## Stack and architecture
 
-FluentFive helps you think, speak, read, and write fluently in English through 5 science-backed daily activities:
+- Next.js **16.2.9**, React **19.2.4**, TypeScript, Tailwind 4, locally bundled Inter/Outfit fonts.
+- Supabase Auth/PostgreSQL/RLS and transactional learning functions.
+- Private Python 3.11 FastAPI service with spaCy, optional CPU sentence-transformer embeddings, conservative grammar rules and optional LanguageTool.
+- Existing optional OpenRouter contextual coaching and ElevenLabs reference audio.
+- Browser speech recognition and local-only shadowing audio playback; existing SM-2 review and Recharts.
 
-1. **Shadowing** — Listen to model sentences and record yourself to compare pronunciation
-2. **Speak & Think Out Loud** — Respond to prompts for 2 minutes with live speech-to-text
-3. **Active Reading + Chunks** — Read passages, save useful phrases, explore definitions
-4. **Write & Rewrite** — Draft, check grammar with LanguageTool, then polish your rewrite
-5. **Spaced Repetition Review** — Review saved chunks with SM-2 flashcards
+The browser calls authenticated Next.js routes. Next.js calls Python with a private bearer credential. Python is a separate process/deployment; a Next.js serverless host will not start it automatically. See [architecture and methodology](docs/NLP_ARCHITECTURE.md).
 
-## 🛠️ Tech Stack
+## Local setup
 
-- **Framework:** Next.js 14+ (App Router, TypeScript)
-- **Styling:** Tailwind CSS v4
-- **Backend:** Supabase (Postgres, Auth, Storage)
-- **Charts:** Recharts
-- **APIs:** Free Dictionary, Datamuse, LanguageTool, Web Speech API
+Use Node 24 LTS (the tested version is in `.nvmrc`) and Python 3.11. The default Python on some machines is too new for the pinned NLP wheels.
 
-## 🚀 Quick Start
-
-### 1. Clone and Install
-
-```bash
-cd FluentFive
-npm install
-```
-
-### 2. Create a Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Go to **Settings → API** and copy your `Project URL` and `anon public key`
-3. Go to **Settings → API → Service role key** (for server-side operations)
-
-### 3. Set Up Environment Variables
-
-```bash
+```sh
+npm ci
 cp .env.example .env.local
 ```
 
-Edit `.env.local` with your Supabase credentials:
+Fill `.env.local` with your Supabase project URL/public key and a random `NLP_SERVICE_API_KEY` (`openssl rand -hex 32`). Use the same key in Next.js and Python. Do not put private keys in any `NEXT_PUBLIC_*` variable. The application no longer needs a Supabase service-role key at runtime.
+
+In your own Supabase project's SQL editor, review and apply in order:
+
+1. `supabase/migrations/001_initial_schema.sql`
+2. `supabase/migrations/002_ai_feedback.sql`
+3. `supabase/migrations/003_nlp_learning.sql`
+4. `supabase/seed.sql` for a new project that has no learning content
+
+Migration 003 is additive and preserves existing records. It adds private analysis/history/review tables and transactional saves, quotas and rewards. It intentionally restricts direct XP updates; deploy its matching application changes together. Do not blindly rerun initial migrations or seed existing content. No hosted migration has been executed by this implementation.
+
+Configure Supabase Auth's site URL and redirect allowlist for `http://localhost:3000/auth/callback`. Email magic links work with the project's email settings. Enable/configure Google in Supabase only if you want Google sign-in. Add your production callback separately when deploying.
+
+Install NLP and models:
+
+```sh
+python3.11 -m venv nlp-service/.venv
+nlp-service/.venv/bin/python -m pip install -c nlp-service/constraints.txt -r nlp-service/requirements-dev.txt
+nlp-service/.venv/bin/python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+nlp-service/.venv/bin/python -m pip install -c nlp-service/constraints.txt -r nlp-service/requirements-semantic.txt
+nlp-service/.venv/bin/python nlp-service/scripts/download_models.py
 ```
-NEXT_PUBLIC_SUPABASE_URL=your_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+Start the private service in one terminal:
+
+```sh
+cd nlp-service
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --env-file ../.env.local --no-access-log
 ```
 
-### 4. Run Database Migration
+Start Next.js in another, from the root:
 
-Go to your Supabase project → **SQL Editor** and run:
-1. `supabase/migrations/001_initial_schema.sql` (creates all tables + RLS policies)
-2. `supabase/seed.sql` (inserts activities, sentences, passages, quiz questions)
-
-### 5. Configure Auth (Optional)
-
-For Google OAuth:
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create an OAuth 2.0 client (Web application type)
-3. Add `your-supabase-url/auth/v1/callback` as an authorized redirect URI
-4. In Supabase Dashboard → **Auth → Providers → Google**, enable and paste your client ID/secret
-
-### 6. Run Locally
-
-```bash
+```sh
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open `http://localhost:3000`. Without Supabase configuration, the landing page and setup screen still render; private learning requires a configured account. An alternative NLP container setup is `docker compose --env-file .env.local up --build nlp`; see [service README](nlp-service/README.md).
 
-## 📦 Deploy to Vercel
+## Configuration and graceful degradation
 
-1. Push to GitHub
-2. Import the repo in [vercel.com](https://vercel.com)
-3. Add your environment variables in Vercel project settings
-4. Deploy — done!
+All variables are documented in [.env.example](.env.example).
 
-## 📁 Project Structure
+| Configuration | Effect |
+|---|---|
+| Supabase public URL/key | Required for accounts and private persistence. Missing configuration gets a setup screen/503 API response. |
+| NLP service URL/private key | Required for integrated analysis; failed requests retain text and offer retry. |
+| `NLP_ENABLE_EMBEDDINGS=true` plus installed model | Semantic similarity and coherence. Without it these results are explicitly unavailable. |
+| `LANGUAGETOOL_URL` | Broader grammar coverage through a private/self-hosted or public HTTP service. Without it Python reports conservative local rules only. The standalone writing fallback retains the old public LanguageTool integration and labels its limited output. |
+| `OPENROUTER_API_KEY` | Optional contextual phrase explanations, generated prompts and writing polish. Without it the cycle uses a safe personal prompt; local NLP still works. |
+| `ELEVENLABS_API_KEY` | Optional model audio. Browser voice, local recording and text alignment remain available without it. |
 
+Optional AI/voice providers may charge for usage. No zero-cost guarantee is made. Database quotas are 100 NLP requests, 20 contextual AI calls and 40 TTS calls per user per UTC day; cached exact NLP requests do not consume another quota. These are application limits, not provider billing controls.
+
+## Learner workflow
+
+1. Sign in and open the dashboard or Fluency Cycle.
+2. Read a passage from Wikipedia (attributed) or the existing seeded library. Explore actual phrases, definitions and reading questions.
+3. Study the target phrases; prepare for 45 seconds around a personal prompt.
+4. Speak for up to 90 seconds using live browser transcription. A typed fallback has no measured speaking pace.
+5. Review grammar spans, vocabulary statistics/suggestions, relevance, WPM and an internal practice score. Unavailable capabilities are explicit.
+6. Select corrections or missed phrases and save. A single database transaction records completion, selected flashcards, XP and streak; retries do not duplicate rewards.
+7. Review due cards with SM-2 and inspect session feedback, learning patterns and progress.
+
+Standalone two-minute speaking, difficulty-based shadowing, active reading, writing/rewrite, grammar/chunk quizzes and flashcards remain available. Writing corrections are opt-in; both drafts persist. Shadowing keeps model audio/local playback and displays word-level lexical alignment, never a text-derived acoustic pronunciation score.
+
+## Checks
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run test:nlp
+npm run evaluate:nlp
+npm run build
+npx playwright install chromium
+npm run test:e2e
+npm run test:integration
 ```
-src/
-├── app/
-│   ├── page.tsx              # Landing page
-│   ├── login/page.tsx        # Auth page
-│   ├── auth/callback/route.ts # OAuth callback
-│   └── app/
-│       ├── page.tsx           # Dashboard
-│       ├── shadow/page.tsx    # Activity 1
-│       ├── speak/page.tsx     # Activity 2
-│       ├── read/page.tsx      # Activity 3
-│       ├── write/page.tsx     # Activity 4
-│       ├── review/page.tsx    # Activity 5
-│       ├── progress/page.tsx  # Progress charts
-│       └── test/page.tsx      # Quiz system
-├── components/
-│   └── progress/
-│       └── ProgressChart.tsx  # Interactive Recharts
-├── lib/
-│   ├── supabase/              # Client/server/middleware
-│   ├── sm2.ts                 # Spaced repetition algorithm
-│   ├── xp.ts                  # XP reward system
-│   ├── streak.ts              # Streak logic
-│   ├── chunk-quiz.ts          # Quiz generation
-│   └── utils.ts               # Utility functions
-└── middleware.ts               # Auth route protection
-```
 
-## 💰 Cost
+`evaluate:nlp` needs `NLP_ENABLE_EMBEDDINGS=true` in the shell for real semantic evaluation; alternatively run the command shown in the service README. Test fixtures are locally authored; paid APIs and hosted authentication are mocked in browser tests. Database tests execute migrations in embedded PostgreSQL. The cross-service test starts a real local FastAPI process and executes the Next gateway/SQL persistence while substituting only the Supabase auth/client transport. Tests do not touch production.
 
-**$0** — runs entirely on free tiers (Supabase, Vercel, all APIs).
-
-## 📄 License
-
-MIT
+See [testing details](docs/TESTING.md), [executed verification](docs/VERIFICATION.md), [implementation report](docs/IMPLEMENTATION_REPORT.md), and [deployment guide](docs/DEPLOYMENT.md). Hosted OAuth, hosted Supabase, physical microphone behavior and paid provider responses require your own configured environment; they are not implied by passing mocked tests.

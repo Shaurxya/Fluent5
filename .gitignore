@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# NLP local environment and models (private content is never committed)
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.model-cache/
+test-results/
+playwright-report/
+!.env.example

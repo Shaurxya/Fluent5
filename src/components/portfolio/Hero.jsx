@@ -1,4 +1,5 @@
 "use client";
+import Image from 'next/image';
 import { useRef, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { initHeroAnimations } from '@/animations/heroAnimations';
@@ -104,7 +105,8 @@ const Hero = () => {
                     <div ref={imageRef} className="relative z-20 flex flex-col items-center gap-6" style={{ perspective: '800px' }}>
                         <div className="w-56 h-56 sm:w-72 sm:h-72 md:w-80 md:h-80 rounded-[2rem] p-[2px] bg-gradient-to-br from-[var(--accent-teal)] via-[var(--accent-blue)] to-[var(--accent-purple)]" style={{ boxShadow: '0 0 60px rgba(0,255,213,0.15), 0 0 120px rgba(0,255,213,0.05)' }}>
                             <div className="w-full h-full rounded-[1.9rem] bg-[var(--bg-primary)] p-1">
-                                <img
+                                <Image
+                                    width={320} height={320}
                                     src="/shaurya.png"
                                     alt="Shaurya Sharma - AI Website Developer"
                                     className="w-full h-full rounded-[1.7rem] object-cover"

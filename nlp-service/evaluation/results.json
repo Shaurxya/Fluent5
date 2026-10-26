@@ -1,0 +1,47 @@
+{
+  "scope": "Small original development set; not held-out, representative, or a certified assessment.",
+  "grammar_samples": 8,
+  "error_span_precision": 1.0,
+  "error_span_recall": 1.0,
+  "correction_exact_match": 1.0,
+  "structured_output_roundtrip": 1.0,
+  "alignment_cases": 4,
+  "wer_exact_match": 1.0,
+  "semantic_evaluated": 4,
+  "semantic_label_accuracy": 1.0,
+  "latency_ms_median": 2.43,
+  "latency_ms_max": 246.35,
+  "measured_at_utc": "2026-10-26T19:02:28.600878+00:00",
+  "models": {
+    "spacy_version": "3.8.7",
+    "spacy_pipeline_version": "3.8.0",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "embedding_revision": "c9745ed1d9f207416be6d2e6f8de32d1f16199bf",
+    "embeddings_used": true
+  },
+  "grammar_true_positives": 5,
+  "grammar_false_positives": 0,
+  "grammar_false_negatives": 0,
+  "semantic_cases": [
+    {
+      "similarity": 0.6841,
+      "expected_related": true,
+      "latency_ms": 3159.44
+    },
+    {
+      "similarity": 0.0565,
+      "expected_related": false,
+      "latency_ms": 13.34
+    },
+    {
+      "similarity": 0.4823,
+      "expected_related": true,
+      "latency_ms": 19.21
+    },
+    {
+      "similarity": 0.1384,
+      "expected_related": false,
+      "latency_ms": 12.3
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs';
 
 // Simple env parser to avoid external dependencies
 const envFile = fs.readFileSync('.env.local', 'utf8');
@@ -25,7 +25,7 @@ async function checkDatabase() {
   console.log('Testing connection to Supabase...');
   
   // Test 1: Check if tables exist
-  const { data: tables, error: tablesError } = await supabase.from('profiles').select('id').limit(1);
+  const { error: tablesError } = await supabase.from('profiles').select('id').limit(1);
   if (tablesError) {
     console.log('❌ Could not query database. Have you run the database migrations?');
     console.log(tablesError.message);

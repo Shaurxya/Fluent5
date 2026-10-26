@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { analyzeText, completePractice, saveChunks } from "@/lib/nlp/client";
+import type { AnalysisEnvelope } from "@/lib/nlp/contracts";
+import { ReadingInsights } from "@/components/nlp/ReadingInsights";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -14,7 +17,6 @@ import {
   Loader2,
   ExternalLink,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Passage, Chunk } from "@/lib/supabase/types";
 
 interface Definition {
@@ -38,8 +40,22 @@ export default function ReadPage() {
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [insights, setInsights] = useState<AnalysisEnvelope | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
+  const attempt = useRef<string | null>(null);
+
+  async function analyzePassage() {
+    if (!passage) return;
+    setAnalyzing(true); setAnalysisError(""); attempt.current ||= crypto.randomUUID();
+    try { setInsights(await analyzeText({ attempt_id: attempt.current, mode: "read", text: passage.body })); }
+    catch (e) { setAnalysisError(e instanceof Error ? e.message : "Reading analysis unavailable."); }
+    finally { setAnalyzing(false); }
+  }
+
   const loadPassage = useCallback(async () => {
     setLoading(true);
+    setInsights(null); setCompleted(false); setAnalysisError(""); attempt.current = null;
     const { data } = await supabase.from("passages").select("*");
     if (data && data.length > 0) {
       const random = data[Math.floor(Math.random() * data.length)];
@@ -61,9 +77,20 @@ export default function ReadPage() {
   }, [supabase]);
 
   useEffect(() => {
-    loadPassage();
-    loadChunks();
-  }, [loadPassage, loadChunks]);
+    let active = true;
+    supabase.from("passages").select("*").then(({data,error}) => {
+      if (!active) return;
+      if (data?.length) setPassage(data[Math.floor(Math.random()*data.length)] as Passage);
+      if (error) setAnalysisError("Passages could not be loaded. Refresh to retry.");
+      setLoading(false);
+    });
+    supabase.auth.getUser().then(async ({data:{user}}) => {
+      if (!user) return;
+      const {data} = await supabase.from("chunks").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(20);
+      if (active && data) setChunks(data as Chunk[]);
+    });
+    return () => {active=false;};
+  }, [supabase]);
 
   function handleTextSelection() {
     const selection = window.getSelection();
@@ -82,19 +109,9 @@ export default function ReadPage() {
   async function saveChunk() {
     if (!selectedText) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase.from("chunks").insert({
-      user_id: user.id,
-      text: selectedText,
-      due_date: new Date().toISOString().split("T")[0],
-    });
-
-    toast.success("Chunk saved! 📚");
-    setShowToolbar(false);
-    setSaving(false);
-    loadChunks();
+    try { const result = await saveChunks([{ text: selectedText, note: `From ${passage?.title || "reading"}: ${passage?.body.slice(0,500)}` }]); toast.success(result.saved ? "Phrase saved to review." : "This phrase is already saved."); setShowToolbar(false); await loadChunks(); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Save failed."); }
+    finally { setSaving(false); }
   }
 
   async function lookupDefinition() {
@@ -138,28 +155,13 @@ export default function ReadPage() {
   }
 
   async function completeActivity() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    await supabase.from("sessions").upsert(
-      {
-        user_id: user.id,
-        activity_key: "read",
-        done_on: today,
-        payload: { passage_id: passage?.id, chunks_saved: chunks.length },
-      },
-      { onConflict: "user_id,activity_key,done_on" }
-    );
-
-    await supabase.from("profiles").select("xp").eq("id", user.id).single().then(({ data }) => {
-      if (data) {
-        supabase.from("profiles").update({ xp: (data.xp || 0) + 20, last_active: today }).eq("id", user.id);
-      }
-    });
-
-    setCompleted(true);
-    toast.success("Reading complete! +20 XP ✨");
+    if (!passage) return;
+    setSaving(true); attempt.current ||= crypto.randomUUID();
+    try {
+      const data = await completePractice({ attempt_id: attempt.current, activity: "read", analysis_id: insights?.analysis_id, payload: { passage_id: passage.id, title: passage.title } });
+      setCompleted(true); toast.success(`Reading saved. +${data.xp_awarded} XP`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Session save failed."); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -281,10 +283,11 @@ export default function ReadPage() {
           {!completed && (
             <button
               onClick={completeActivity}
+              disabled={saving || !passage}
               className="w-full py-3 rounded-xl gradient-bg text-white font-medium text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              Complete Reading (+20 XP)
+              Complete Reading
             </button>
           )}
 
@@ -296,6 +299,8 @@ export default function ReadPage() {
           )}
         </div>
       </div>
+
+      {passage && <section className="space-y-4"><button className="nlp-button" onClick={analyzePassage} disabled={analyzing}>{analyzing ? "Analyzing passage…" : "Explore vocabulary & comprehension"}</button>{analysisError && <p role="alert" className="text-amber-200">{analysisError}</p>}{insights && <ReadingInsights result={insights} />}</section>}
 
       {/* Definition Modal */}
       {showDefinition && definition && (

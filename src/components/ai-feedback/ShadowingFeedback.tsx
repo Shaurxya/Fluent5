@@ -18,14 +18,14 @@ export function ShadowingFeedback({ data, sentence }: ShadowingFeedbackProps) {
       case 'missing': return 'text-neutral-300 line-through';
       case 'extra': return 'text-red-500 font-medium cursor-help';
       case 'substituted': return 'text-orange-500 font-medium cursor-help';
-      default: return 'text-neutral-800';
+      default: return 'text-foreground';
     }
   };
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Score & Encouragement */}
-      <div className="flex items-center gap-6 p-6 bg-white rounded-2xl border border-neutral-200 shadow-sm">
+      <div className="flex items-center gap-6 p-6 bg-background-card rounded-2xl border border-border shadow-sm">
         <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
           <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="40" className="stroke-neutral-100" strokeWidth="8" fill="none" />
@@ -38,18 +38,18 @@ export function ShadowingFeedback({ data, sentence }: ShadowingFeedbackProps) {
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xl font-bold text-neutral-800">{data.overallScore}</span>
+            <span className="text-xl font-bold text-foreground">{data.overallScore}</span>
           </div>
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 mb-1">Pronunciation Match</h2>
-          <p className="text-neutral-600">{data.encouragement}</p>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Lexical match (AI estimate)</h2>
+          <p className="text-foreground-muted">{data.encouragement}</p>
         </div>
       </div>
 
       {/* Word-level comparison */}
-      <div className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-        <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-4">Word Accuracy</h3>
+      <div className="bg-background-card p-6 rounded-2xl border border-border shadow-sm">
+        <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wider mb-4">Word Accuracy</h3>
         <div className="text-xl leading-loose flex flex-wrap gap-x-1.5">
           {data.wordComparison.map((w, idx) => (
             <span 

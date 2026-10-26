@@ -1,20 +1,13 @@
 "use client";
+import { useRef, useState } from "react";
+import { AnalysisResults, GrammarErrorHighlighter } from "@/components/nlp/AnalysisResults";
+import { WritingFeedback } from "@/components/ai-feedback/WritingFeedback";
+import { analyzeText, completePractice, replaceSpan, requestJSON } from "@/lib/nlp/client";
+import type { AnalysisEnvelope, GrammarError } from "@/lib/nlp/contracts";
+import { WritingSchema } from "@/lib/ai/schemas";
+import type { z } from "zod";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
-import {
-  PenTool,
-  CheckCircle2,
-  Loader2,
-  AlertTriangle,
-  RefreshCw,
-  Save,
-  Sparkles,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const WRITING_PROMPTS = [
+const PROMPTS = [
   "Write about a time you had to step out of your comfort zone.",
   "Describe a technology that has changed your life and explain how.",
   "Write a letter to your future self, 5 years from now.",
@@ -28,309 +21,63 @@ const WRITING_PROMPTS = [
   "Describe a cultural tradition that is meaningful to you.",
   "Write about a problem in your community and propose a solution.",
 ];
-
-interface GrammarIssue {
-  message: string;
-  offset: number;
-  length: number;
-  replacements: { value: string }[];
-  rule: { category: { name: string } };
-  context: { text: string; offset: number; length: number };
-}
-
 export default function WritePage() {
-  const supabase = createClient();
-  const [prompt, setPrompt] = useState("");
-  const [draftV1, setDraftV1] = useState("");
-  const [draftV2, setDraftV2] = useState("");
-  const [issues, setIssues] = useState<GrammarIssue[]>([]);
-  const [checking, setChecking] = useState(false);
-  const [mode, setMode] = useState<"v1" | "v2">("v1");
-  const [savedV1, setSavedV1] = useState(false);
-  const [completed, setCompleted] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setPrompt(WRITING_PROMPTS[Math.floor(Math.random() * WRITING_PROMPTS.length)]);
-  }, []);
-
-  async function checkGrammar() {
-    const text = mode === "v1" ? draftV1 : draftV2;
-    if (!text.trim()) {
-      toast.error("Write something first!");
-      return;
-    }
-
-    setChecking(true);
+  const [index, setIndex] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [original, setOriginal] = useState<string | null>(null);
+  const [result, setResult] = useState<AnalysisEnvelope | null>(null);
+  const [fallback, setFallback] = useState<GrammarError[]>([]);
+  const [polish, setPolish] = useState<z.infer<typeof WritingSchema> | null>(null);
+  const [register, setRegister] = useState<"neutral" | "formal" | "informal">("neutral");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+  const attempt = useRef<string | null>(null);
+  const writing = useRef<string | null>(null);
+  const ensureAttempt = () => attempt.current ||= crypto.randomUUID();
+  function edit(value: string) { if (saved.startsWith("Both drafts")) attempt.current=null; setDraft(value); setResult(null); setFallback([]); setPolish(null); setSaved(""); }
+  async function analyze() {
+    setBusy(true); setError(""); setResult(null); setFallback([]);
+    try { setResult(await analyzeText({ attempt_id: ensureAttempt(), mode: "write", text: draft, prompt: PROMPTS[index], target_register: register })); }
+    catch (e) {
+      setError(e instanceof Error ? e.message : "NLP unavailable.");
+      try { const checked = await requestJSON<{ errors: GrammarError[] }>("/api/grammar/check", { method: "POST", body: JSON.stringify({ text: draft }) }); setFallback(checked.errors); setError("NLP unavailable. Showing LanguageTool grammar suggestions only; no overall score."); }
+      catch { /* Retain text and explicit original failure. */ }
+    } finally { setBusy(false); }
+  }
+  async function saveOriginal() {
+    setBusy(true); setError(""); writing.current ||= crypto.randomUUID();
     try {
-      const params = new URLSearchParams({
-        text,
-        language: "en-US",
-      });
-
-      const res = await fetch("https://api.languagetool.org/v2/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setIssues(data.matches);
-        if (data.matches.length === 0) {
-          toast.success("No issues found! Great writing 🎉");
-        } else {
-          toast.info(`Found ${data.matches.length} suggestion(s)`);
-        }
-      } else {
-        toast.error("Grammar check failed. Try again later.");
-      }
-    } catch {
-      toast.error("Failed to connect to grammar checker");
-    }
-    setChecking(false);
+      await requestJSON("/api/learning/draft", { method: "POST", body: JSON.stringify({ id: writing.current, prompt: PROMPTS[index], draft_v1: draft }) });
+      setOriginal(draft); setResult(null); setFallback([]); setSaved("Original draft saved. Now revise it in your own words.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Draft save failed."); }
+    finally { setBusy(false); }
   }
-
-  function applySuggestion(issue: GrammarIssue) {
-    if (issue.replacements.length === 0) return;
-    const text = mode === "v1" ? draftV1 : draftV2;
-    const before = text.slice(0, issue.offset);
-    const after = text.slice(issue.offset + issue.length);
-    const newText = before + issue.replacements[0].value + after;
-
-    if (mode === "v1") setDraftV1(newText);
-    else setDraftV2(newText);
-
-    setIssues((prev) => prev.filter((i) => i !== issue));
-    toast.success("Suggestion applied");
+  async function saveFinal() {
+    setBusy(true); setError("");
+    try {
+      const data = await completePractice({ attempt_id: ensureAttempt(), activity: "write", analysis_id: result?.analysis_id,
+        payload: { prompt: PROMPTS[index], draft_v1: original ?? draft, draft_v2: draft, writing_id: writing.current, word_count: draft.trim().split(/\s+/).filter(Boolean).length } });
+      setSaved(`Both drafts saved. ${data.xp_awarded} XP awarded.`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Writing save failed."); }
+    finally { setBusy(false); }
   }
-
-  async function saveWriting() {
-    setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    const text = mode === "v1" ? draftV1 : draftV2;
-    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-
-    if (mode === "v1" && !savedV1) {
-      await supabase.from("writings").insert({
-        user_id: user.id,
-        prompt,
-        draft_v1: draftV1,
-        word_count: wordCount,
-      });
-      setSavedV1(true);
-      setMode("v2");
-      setDraftV2(draftV1);
-      setIssues([]);
-      toast.success("Draft v1 saved! Now rewrite and polish it.");
-    } else {
-      // Update with v2
-      const { data: existing } = await supabase
-        .from("writings")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("prompt", prompt)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (existing) {
-        await supabase.from("writings").update({ draft_v2: draftV2, word_count: wordCount }).eq("id", existing.id);
-      }
-
-      // Complete activity
-      await supabase.from("sessions").upsert(
-        {
-          user_id: user.id,
-          activity_key: "write",
-          done_on: today,
-          payload: { prompt, word_count: wordCount },
-        },
-        { onConflict: "user_id,activity_key,done_on" }
-      );
-
-      await supabase.from("profiles").select("xp").eq("id", user.id).single().then(({ data }) => {
-        if (data) {
-          supabase.from("profiles").update({ xp: (data.xp || 0) + 30, last_active: today }).eq("id", user.id);
-        }
-      });
-
-      setCompleted(true);
-      toast.success("Writing complete! +30 XP ✨");
-    }
-    setSaving(false);
+  async function generatePolish() {
+    setBusy(true); setError("");
+    try { setPolish(WritingSchema.parse(await requestJSON("/api/ai/analyze", { method: "POST", body: JSON.stringify({ mode: "write", input: { text: draft, targetRegister: register }, stream: false }) }))); }
+    catch (e) { setError(e instanceof Error ? e.message : "Optional AI polish unavailable."); }
+    finally { setBusy(false); }
   }
-
-  const currentText = mode === "v1" ? draftV1 : draftV2;
-  const wordCount = currentText.trim().split(/\s+/).filter(Boolean).length;
-
-  return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-            <PenTool className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-outfit)]">
-            Write & Rewrite
-          </h1>
-        </div>
-        <p className="text-foreground-muted">
-          Write a draft, check grammar, then polish your rewrite.
-        </p>
-      </div>
-
-      {/* Prompt */}
-      <div className="rounded-2xl bg-background-card border border-border p-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-foreground-muted uppercase tracking-wider">
-            Writing Prompt
-          </span>
-          <button
-            onClick={() =>
-              setPrompt(
-                WRITING_PROMPTS[Math.floor(Math.random() * WRITING_PROMPTS.length)]
-              )
-            }
-            className="text-xs text-accent hover:underline flex items-center gap-1"
-            disabled={savedV1}
-          >
-            <RefreshCw className="w-3 h-3" /> New prompt
-          </button>
-        </div>
-        <p className="text-lg font-medium">&ldquo;{prompt}&rdquo;</p>
-      </div>
-
-      {/* Mode tabs */}
-      {savedV1 && (
-        <div className="flex gap-2">
-          <button
-            onClick={() => setMode("v1")}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium transition-all",
-              mode === "v1"
-                ? "bg-accent/10 text-accent border border-accent/20"
-                : "bg-background-card border border-border text-foreground-muted"
-            )}
-          >
-            Draft v1
-          </button>
-          <button
-            onClick={() => setMode("v2")}
-            className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium transition-all",
-              mode === "v2"
-                ? "gradient-bg text-white"
-                : "bg-background-card border border-border text-foreground-muted"
-            )}
-          >
-            Rewrite v2 ✨
-          </button>
-        </div>
-      )}
-
-      {/* Editor */}
-      <div className="space-y-4">
-        <textarea
-          value={mode === "v1" ? draftV1 : draftV2}
-          onChange={(e) =>
-            mode === "v1" ? setDraftV1(e.target.value) : setDraftV2(e.target.value)
-          }
-          placeholder="Start writing..."
-          readOnly={mode === "v1" && savedV1}
-          className={cn(
-            "w-full min-h-[250px] p-6 rounded-2xl bg-background-card border border-border text-foreground placeholder:text-foreground-subtle resize-y focus:outline-none focus:ring-2 focus:ring-ring/50 transition-all leading-relaxed",
-            mode === "v1" && savedV1 && "opacity-60"
-          )}
-        />
-
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-foreground-muted">
-            {wordCount} words
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={checkGrammar}
-              disabled={checking || !currentText.trim()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:border-border-hover text-sm font-medium transition-all disabled:opacity-50"
-            >
-              {checking ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-accent" />
-              )}
-              Check Grammar
-            </button>
-            {!completed && (
-              <button
-                onClick={saveWriting}
-                disabled={saving || !currentText.trim()}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl gradient-bg text-white text-sm font-medium hover:opacity-90 transition-all disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                {savedV1 ? "Save v2 & Complete (+30 XP)" : "Save as v1"}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Grammar Issues */}
-      {issues.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-semibold font-[family-name:var(--font-outfit)] flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-warning" />
-            {issues.length} Suggestion{issues.length !== 1 ? "s" : ""}
-          </h3>
-          {issues.map((issue, i) => (
-            <div
-              key={i}
-              className="rounded-xl bg-background-card border border-border p-4 space-y-2"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <span className="text-xs uppercase tracking-wider text-warning font-medium">
-                    {issue.rule.category.name}
-                  </span>
-                  <p className="text-sm mt-1">{issue.message}</p>
-                </div>
-                {issue.replacements.length > 0 && (
-                  <button
-                    onClick={() => applySuggestion(issue)}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-all"
-                  >
-                    Apply: &ldquo;{issue.replacements[0].value}&rdquo;
-                  </button>
-                )}
-              </div>
-              <div className="text-xs text-foreground-muted bg-background-secondary rounded-lg px-3 py-2 font-mono">
-                ...{issue.context.text}...
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Completion */}
-      {completed && (
-        <div className="rounded-2xl bg-success/10 border border-success/20 p-6 text-center">
-          <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-outfit)] mb-1">
-            Writing complete! ✍️
-          </h3>
-          <p className="text-foreground-muted text-sm">
-            Great work polishing your writing today.
-          </p>
-        </div>
-      )}
-    </div>
-  );
+  return <div className="max-w-4xl mx-auto space-y-6"><header><h1 className="text-2xl font-bold">Write & rewrite</h1><p className="text-foreground-muted mt-2">Keep your meaning. Review each suggestion before applying it.</p></header>
+    <section className="nlp-panel space-y-4"><p className="text-lg">{PROMPTS[index]}</p>{original === null && <button className="text-sm text-accent underline" disabled={busy || !!draft.trim()} onClick={() => setIndex((i) => (i+1)%PROMPTS.length)}>Different prompt</button>}
+      <label className="flex gap-3 items-center text-sm">Target register<select className="nlp-input w-auto" value={register} onChange={(e) => { setRegister(e.target.value as typeof register); setResult(null); setPolish(null); }}><option value="neutral">Neutral</option><option value="formal">Formal</option><option value="informal">Informal</option></select></label>
+      <label className="block text-sm" htmlFor="writing-draft">{original === null ? "First draft" : "Your rewrite"}</label><textarea id="writing-draft" className="nlp-input min-h-64" maxLength={12000} value={draft} disabled={busy} onChange={(e) => edit(e.target.value)} placeholder="Start writing…" /><p className="text-xs text-foreground-muted">{draft.trim() ? draft.trim().split(/\s+/).length : 0} words · {draft.length}/12000 characters</p>
+      <div className="flex gap-3 flex-wrap"><button className="nlp-button" disabled={busy || !draft.trim()} onClick={analyze}>{busy ? "Working…" : "Analyze writing"}</button>{original === null ? <button className="nlp-button" disabled={busy || !draft.trim()} onClick={saveOriginal}>Save first draft & start rewrite</button> : <button className="nlp-button" disabled={busy || !draft.trim() || saved.startsWith("Both drafts")} onClick={saveFinal}>Save rewrite & finish</button>}<button className="text-sm text-accent underline" disabled={busy || !draft.trim()} onClick={generatePolish}>Generate optional AI polish</button></div>
+    </section>
+    {error && <p role="alert" className="text-amber-200">{error}</p>}{saved && <p role="status" className="text-emerald-300">{saved}</p>}
+    {original !== null && <details className="nlp-panel"><summary className="cursor-pointer">Compare your original draft</summary><p className="whitespace-pre-wrap mt-4">{original}</p></details>}
+    {result && <AnalysisResults analysis={result.analysis} onAccept={(e) => { edit(replaceSpan(draft, e.start, e.end, e.replacements[0])); setSaved("Suggestion applied. Analyze again to refresh remaining error positions."); }} />}
+    {fallback.length > 0 && <section className="nlp-panel space-y-4"><GrammarErrorHighlighter text={draft} errors={fallback} />{fallback.map((e) => <div key={e.id} className="text-sm space-y-2"><p>{e.original} → {e.replacements.join(" / ")}: {e.explanation}</p>{e.replacements[0] && <button className="nlp-button" onClick={() => edit(replaceSpan(draft,e.start,e.end,e.replacements[0]))}>Accept suggestion</button>}</div>)}</section>}
+    {polish && <section className="space-y-4"><p className="text-sm text-foreground-muted">Optional AI coaching. Scores below are model estimates, separate from the deterministic practice metric. Review facts and meaning before using the rewrite.</p><WritingFeedback data={polish} originalText={draft} /><button className="nlp-button" onClick={() => edit(polish.rewrite)}>Use this polished version in my editor</button></section>}
+  </div>;
 }
