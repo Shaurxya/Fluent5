@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { analysisInputSchema, analysisSchema } from "@/lib/nlp/contracts";
 import { ApiError, authenticated, body, failure, json, quota } from "@/lib/api/server";
+import { assertStorage } from "@/lib/learning/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     if (!url || !key) throw new ApiError(503, "The NLP service is not configured. Your text has been kept; try again after setup.", "nlp_unavailable");
     const requestKey = createHash("sha256").update(JSON.stringify({ version: "nlp-v1", ...input })).digest("hex");
     const { data: cached, error: readError } = await supabase.from("nlp_analyses").select("id,result").eq("user_id", user.id).eq("request_key", requestKey).maybeSingle();
-    if (readError) throw new ApiError(503, "Analysis storage unavailable. Apply database migration 003.");
+    assertStorage("nlp_analyses",readError);
     if (cached) return json({ analysis_id: cached.id, analysis: analysisSchema.parse(cached.result), cached: true });
     await quota(supabase, "nlp");
     const serviceInput = { mode: input.mode, text: input.text, prompt: input.prompt, reference: input.reference, expected_answer: input.expected_answer, targets: input.targets, duration_seconds: input.duration_seconds, target_register: input.target_register };

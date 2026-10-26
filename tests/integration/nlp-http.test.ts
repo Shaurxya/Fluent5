@@ -22,7 +22,7 @@ beforeAll(async () => {
     create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}');
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     alter default privileges in schema public grant all on tables to authenticated;`);
-  for(const name of ["001_initial_schema.sql","002_ai_feedback.sql","003_nlp_learning.sql"]) await db.exec(await readFile(`supabase/migrations/${name}`,"utf8"));
+  for(const name of ["001_initial_schema.sql","002_ai_feedback.sql","003_nlp_learning.sql","004_learning_storage_access.sql"]) await db.exec(await readFile(`supabase/migrations/${name}`,"utf8"));
   await db.exec(await readFile("supabase/seed.sql","utf8"));await db.query("insert into auth.users(id,email) values($1,'local-integration@example.test')",[user]);
   await db.query("select set_config('request.jwt.claim.sub',$1,false)",[user]);await db.exec("set role authenticated");
   auth.client.mockResolvedValue({auth:{getUser:async () => ({data:{user:{id:user}},error:null})},from:(table:string) => {

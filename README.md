@@ -28,9 +28,12 @@ In your own Supabase project's SQL editor, review and apply in order:
 1. `supabase/migrations/001_initial_schema.sql`
 2. `supabase/migrations/002_ai_feedback.sql`
 3. `supabase/migrations/003_nlp_learning.sql`
-4. `supabase/seed.sql` for a new project that has no learning content
+4. `supabase/migrations/004_learning_storage_access.sql`
+5. `supabase/seed.sql` for a new project that has no learning content
 
 Migration 003 is additive and preserves existing records. It adds private analysis/history/review tables and transactional saves, quotas and rewards. It intentionally restricts direct XP updates; deploy its matching application changes together. Do not blindly rerun initial migrations or seed existing content. No hosted migration has been executed by this implementation.
+
+Migration 004 explicitly grants the application's required access while preserving RLS, repairs missing legacy-account profiles, and reloads the API schema cache. It is safe to rerun after 003. For history/storage errors, see [the targeted repair guide](docs/STORAGE_TROUBLESHOOTING.md).
 
 Configure Supabase Auth's site URL and redirect allowlist for `http://localhost:3000/auth/callback`. Email magic links work with the project's email settings. Enable/configure Google in Supabase only if you want Google sign-in. Add your production callback separately when deploying.
 

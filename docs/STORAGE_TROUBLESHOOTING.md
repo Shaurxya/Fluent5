@@ -1,0 +1,35 @@
+# Learning history and analysis storage errors
+
+The original message mapped every summary failure to migration 003. That was misleading: any of eight queries could fail, and an account created before the signup trigger could have no profile. The summary now identifies the affected table and error category. Logs contain only a fixed resource name and database error code, not raw provider messages or private text.
+
+## Database repair
+
+In the **same Supabase project configured by Vercel's `NEXT_PUBLIC_SUPABASE_URL`**, apply missing migrations 001/002/003 first. Then run the entire `supabase/migrations/004_learning_storage_access.sql` in SQL Editor (or the project's established migration workflow). Do not rerun completed, non-idempotent initial migrations.
+
+Migration 004:
+
+- Checks prerequisites and names missing tables before changing anything.
+- Sets explicit grants for projects that don't automatically expose new tables to the Data API.
+- Preserves the existing RLS policies and user ownership checks.
+- Restricts authenticated clients to the operations used by the application, including only `id`/`display_name` on profile creation and `display_name` on profile update.
+- Prevents direct reward editing, profile deletion, table truncation and quota-counter access.
+- Adds a profile for existing auth accounts only where no profile exists; existing names/rewards/history are untouched.
+- Requests a PostgREST schema-cache reload.
+
+It is transactional and safe to rerun. It does not create missing prerequisite tables or erase learner content. Refresh the app after the transaction succeeds. Signed-in users with a missing profile can also be recovered on dashboard load using their authenticated client, without a service-role key or reward overwrite.
+
+## Specific errors
+
+| Error category | Meaning / next step |
+|---|---|
+| `database_missing_table` | The table isn't available in PostgREST's schema. Check the named migration completed on the correct project, and reload the schema cache. |
+| `database_permissions` | The authenticated role lacks a required table/column grant. Apply 004; don't disable RLS. |
+| `database_schema_mismatch` | Columns differ from the application schema. Inspect the migration results. |
+| `database_unavailable` | Connection or other database failure. Check project availability and configuration; this does not automatically mean 003 is missing. |
+| `profile_unavailable` | The current profile couldn't be created or re-read; sign in again and check grants/policies. |
+
+Local regression tests reproduce the failure with automatic grants disabled, test idempotent repair and legacy-account backfill, and verify cross-user/anonymous isolation. Summary API tests cover missing rows, concurrent profile creation, schema errors, denied grants and connection failures. Hosted diagnosis still requires access to the actual Supabase project; no production SQL was executed by this patch.
+
+Executed patch checks: 53 application/database tests passed, including 16 new recovery/access tests; the real local NLP-to-SQL integration passed with 004 applied; lint, TypeScript and the optimized production build passed. The user's pre-existing local environment example edits are excluded from this patch.
+
+References: [Supabase grants and RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Data API default privileges](https://supabase.com/docs/guides/api/securing-your-api).
