@@ -1,11 +1,15 @@
 import { analysisEnvelopeSchema, type AnalysisEnvelope, type AnalysisInput, type LearningChunk } from "./contracts";
 
+export class ApiRequestError extends Error {
+  constructor(message:string,public status:number,public code?:string) {super(message);this.name="ApiRequestError";}
+}
+
 export async function requestJSON<T = unknown>(url: string, options?: RequestInit): Promise<T> {
   let response: Response;
   try { response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } }); }
   catch { throw new Error("Connection lost. Your text is still here; try again."); }
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(typeof data?.error === "string" ? data.error : data?.error?.message || "Request failed. Please retry.");
+  if (!response.ok) throw new ApiRequestError(typeof data?.error === "string" ? data.error : data?.error?.message || "Request failed. Please retry.",response.status,typeof data?.error?.code === "string" ? data.error.code : undefined);
   return data as T;
 }
 

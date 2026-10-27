@@ -35,13 +35,23 @@ describe("phrase explanations", () => {
     expect(screen.getByText(/not a contextual phrase explanation/)).toBeVisible();
   });
   it("bounds dictionary attempts and preserves the server's useful error", async () => {
-    const fetch = vi.spyOn(globalThis,"fetch").mockResolvedValue(response({error:{message:"Daily request limit reached."}},429));
+    const fetch = vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(response({error:{message:"Daily request limit reached."}},429))
+      .mockImplementation(async () => response({error:{message:"No dictionary entry found."}},404));
     render(<PhraseMeaning phrase="the good good kind beautiful gardens" context="A passage." />); explain();
     await waitFor(() => expect(screen.getByRole("button")).toBeEnabled());
     expect(fetch).toHaveBeenCalledTimes(4);
     expect(fetch.mock.calls.slice(1).map(([url]) => url)).toEqual(["/api/learning/definition?word=good","/api/learning/definition?word=kind","/api/learning/definition?word=beautiful"]);
     expect(screen.getByRole("status")).toHaveTextContent("Daily request limit reached.");
-    expect(screen.getByRole("status")).toHaveTextContent("No dictionary definition was found either.");
+    expect(screen.getByRole("status")).toHaveTextContent("No dictionary entry was found for these words.");
+  });
+  it("does not describe a dictionary outage as a missing word or keep retrying other words",async () => {
+    const fetch = vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(unavailable())
+      .mockResolvedValueOnce(response({error:{message:"The dictionary service could not be reached. Please retry shortly."}},503));
+    render(<PhraseMeaning phrase={meaning.phrase} context="A passage." />); explain();
+    await waitFor(() => expect(screen.getByRole("button")).toBeEnabled());
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("status")).toHaveTextContent("The dictionary service could not be reached.");
+    expect(screen.queryByText(/No dictionary entry was found/)).not.toBeInTheDocument();
   });
   it("clears the previous fallback and failure after a successful retry", async () => {
     vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(unavailable())

@@ -6,11 +6,15 @@ export async function GET(req:Request) {
     await authenticated(req);
     const word=z.string().regex(/^[a-zA-Z'-]{1,60}$/).safeParse(new URL(req.url).searchParams.get("word"));
     if(!word.success) throw new ApiError(422,"Choose a single English word.");
-    const response=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.data)}`,{signal:AbortSignal.timeout(6000),next:{revalidate:86400}});
-    if(!response.ok) throw new ApiError(404,"No dictionary entry found.");
-    const parsed=entries.parse(await response.json());
-    const definition=parsed[0]?.meanings[0]?.definitions[0]?.definition;
-    if(!definition) throw new ApiError(404,"No definition found.");
+    let response:Response;
+    try {response=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.data)}`,{signal:AbortSignal.timeout(6000),next:{revalidate:86400}});}
+    catch {throw new ApiError(503,"The dictionary service could not be reached. Please retry shortly.","dictionary_unavailable");}
+    if(response.status === 404) throw new ApiError(404,"No dictionary entry found.","dictionary_not_found");
+    if(!response.ok) throw new ApiError(503,"The dictionary service is temporarily unavailable. Please retry shortly.","dictionary_unavailable");
+    const parsed=entries.safeParse(await response.json().catch(() => null));
+    if(!parsed.success) throw new ApiError(502,"The dictionary returned an incompatible response. Please retry.","dictionary_invalid_output");
+    const definition=parsed.data.flatMap(entry => entry.meanings.flatMap(meaning => meaning.definitions)).find(item => item.definition.trim())?.definition;
+    if(!definition) throw new ApiError(404,"No definition found.","dictionary_not_found");
     return json({word:word.data,definition});
   }catch(error){return failure(error);}
 }
