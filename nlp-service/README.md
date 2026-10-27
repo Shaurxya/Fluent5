@@ -31,6 +31,10 @@ docker compose --env-file .env.local up --build nlp
 
 This publishes only to loopback. Container builds require model-download access. The Docker configuration is supplied but has not been built or deployed in this workspace.
 
+On Render and other container hosts, startup and the health check use the host's `PORT` environment variable automatically (Render normally supplies `10000`). Without `PORT`, the container retains its local default of `8000`. Leave Render's custom Docker Command blank so the image's startup command runs. Use `/health` as the health-check path.
+
+For semantic embeddings, set both `WITH_EMBEDDINGS=true` and `NLP_ENABLE_EMBEDDINGS=true` before a **rebuild**. The first controls model installation during image build; the second controls runtime use. A build log showing `if [ "false" = "true" ]` has skipped embedding installation. Changing only the runtime flag cannot install missing model dependencies/weights.
+
 ## Contract
 
 - `GET /health`: public process liveness, no learner data.

@@ -8,6 +8,8 @@ Use a Node-compatible Next.js host or existing Vercel setup. Set public Supabase
 
 The Python service does not execute inside a Vercel Next function. Deploy it separately as a long-lived CPU container or VM. Use private networking where available, or an authenticated TLS endpoint reachable only by the application. Keep the private key synchronized and rotate it with both services. Never use a `NEXT_PUBLIC_` prefix for this key.
 
+The NLP image binds to `0.0.0.0:$PORT`, falling back to `8000` only if `PORT` is absent/empty. Its health check uses the same port. Render's default `PORT=10000` is supported without an override; leave custom Docker Command blank. The integration test executes the Dockerfile's actual CMD and health command with a nondefault host port before testing inference/storage. It does not build a Docker image.
+
 ## NLP service
 
 `nlp-service/Dockerfile` has a non-root user, pinned requirements/constraints and model revisions, optional embedding build argument, and a liveness health check. `compose.yaml` supplies a local-only deployment with a read-only filesystem, temporary scratch space and resource limits. Those definitions are source-reviewed configuration; a Docker image has not been built here.

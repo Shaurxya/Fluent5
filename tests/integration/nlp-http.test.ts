@@ -1,8 +1,8 @@
 import {afterAll,beforeAll,expect,it,vi} from "vitest";
-import {spawn,type ChildProcess} from "node:child_process";
+import {spawn,spawnSync,type ChildProcess} from "node:child_process";
 import {readFile} from "node:fs/promises";
 import {randomBytes,randomInt,randomUUID} from "node:crypto";
-import {resolve} from "node:path";
+import {delimiter,resolve} from "node:path";
 import {PGlite} from "@electric-sql/pglite";
 
 const auth=vi.hoisted(() => ({client:vi.fn()}));
@@ -16,6 +16,8 @@ const db=new PGlite();
 const user=randomUUID();const key=randomBytes(24).toString("hex");
 const port=randomInt(41000,49000);const url=`http://127.0.0.1:${port}`;
 let service:ChildProcess;
+let healthCommand:string;
+let serviceEnv:NodeJS.ProcessEnv;
 
 beforeAll(async () => {
   await db.exec(`create role anon;create role authenticated;create schema auth;grant usage on schema auth,public to authenticated;
@@ -40,7 +42,15 @@ beforeAll(async () => {
     }catch{return {data:null,error:{code:"database"}};}
   }});
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL","http://localhost:54321");vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY","local-test-public");vi.stubEnv("NLP_SERVICE_URL",url);vi.stubEnv("NLP_SERVICE_API_KEY",key);vi.stubEnv("NEXT_PUBLIC_APP_URL","http://localhost");
-  service=spawn(resolve("nlp-service/.venv/bin/python"),["-m","uvicorn","app.main:app","--host","127.0.0.1","--port",String(port),"--no-access-log"],{cwd:resolve("nlp-service"),stdio:"ignore",env:{...process.env,NLP_SERVICE_API_KEY:key,NLP_ENABLE_EMBEDDINGS:"true",LANGUAGETOOL_URL:"",OMP_NUM_THREADS:"1"}});
+  // Execute the actual Docker CMD so a hardcoded container port fails this test.
+  // The venv supplies the same executables installed into the image by pip.
+  const dockerfile=await readFile("nlp-service/Dockerfile","utf8");
+  const commandLine=dockerfile.split("\n").find(line=>line.startsWith("CMD "));
+  healthCommand=dockerfile.split("\n").find(line=>line.startsWith("HEALTHCHECK CMD "))?.slice("HEALTHCHECK CMD ".length)||"";
+  if(!commandLine || !healthCommand)throw new Error("Container startup or health check is missing");
+  const command=JSON.parse(commandLine.slice(4)) as string[];
+  serviceEnv={...process.env,PATH:resolve("nlp-service/.venv/bin")+delimiter+(process.env.PATH||""),PORT:String(port),NLP_SERVICE_API_KEY:key,NLP_ENABLE_EMBEDDINGS:"true",LANGUAGETOOL_URL:"",OMP_NUM_THREADS:"1"};
+  service=spawn(command[0],command.slice(1),{cwd:resolve("nlp-service"),stdio:"ignore",env:serviceEnv});
   let ready=false;
   for(let n=0;n<150;n++){
     if(service.exitCode!==null) throw new Error("Local NLP service failed to start");
@@ -54,6 +64,9 @@ afterAll(async () => {service?.kill("SIGTERM");await db.close();vi.unstubAllEnvs
 const request=(path:string,input:unknown) => new Request(`http://localhost${path}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
 
 it("actual private FastAPI HTTP analysis → Next gateway → PostgreSQL session → flashcard → SM-2 → real stats",async () => {
+  // Both startup and Docker's health check must use the host-provided nondefault PORT.
+  const health=spawnSync("sh",["-c",healthCommand],{cwd:resolve("nlp-service"),env:serviceEnv,timeout:5000,stdio:"ignore"});
+  expect(health.status).toBe(0);
   expect((await fetch(`${url}/nlp/analyze`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:"Hello there"})})).status).toBe(401);
   const attempt=randomUUID();
   const response=await analyzeRoute(request("/api/nlp/analyze",{attempt_id:attempt,mode:"cycle",text:"I goes to college yesterday and meet my friends. We enjoy learning together and sharing stories about our day.",prompt:"Describe a recent experience with your friends.",targets:["sharing stories"],duration_seconds:90}));
